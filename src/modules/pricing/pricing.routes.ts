@@ -1,4 +1,3 @@
-// routes/pricing-plan.ts
 import { FastifyInstance } from "fastify";
 
 export default async function PricingPlanRoutes(fastify: FastifyInstance) {
@@ -12,37 +11,37 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
         planType,
         planName,
         description,
+        fixedPrice,
         basePrice,
         creditsIncluded,
         validity,
         meteredUsages     // array of { productId?, name?, credits }
       } = data;
 
+      const planData = {
+        planType,
+        planName,
+        description,
+        basePrice,
+        creditsIncluded,
+        validity,
+      }
+
+      if (typeof fixedPrice !== undefined) {
+        planData.fixedPrice = fixedPrice
+      }
+
       // === If planId provided -> update that plan ===
       let plan;
       if (planId) {
         plan = await fastify.prisma.pricingPlan.update({
           where: { id: Number(planId) },
-          data: {
-            planType,
-            planName,
-            description,
-            basePrice,
-            creditsIncluded,
-            validity
-          }
+          data: planData
         });
       } else {
         // === create new plan ===
         plan = await fastify.prisma.pricingPlan.create({
-          data: {
-            planType,
-            planName,
-            description,
-            basePrice,
-            creditsIncluded,
-            validity
-          }
+          data: planData
         });
       }
 
@@ -107,8 +106,14 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
       });
 
       return reply.send({ message: "Pricing plan saved", plan: saved });
-    } catch (err: unknown) {
+    } catch (err: any) {
       fastify.log.error(err);
+
+      const backendMessage = err.response?.data?.error;
+      if (backendMessage?.includes("exists")) {
+        alert("A plan with this name already exists.");
+        return;
+      }
     
       return reply.code(500).send({
         error: "Failed to save pricing plan",

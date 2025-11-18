@@ -55,6 +55,7 @@ model PricingPlan {
   planType             String
   planName             String         @unique
   description          String?
+  fixedPrice           Float?
   basePrice            Float
   creditsIncluded      Float
   validity			       Float?
