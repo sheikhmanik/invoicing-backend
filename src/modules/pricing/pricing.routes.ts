@@ -107,9 +107,13 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
       });
 
       return reply.send({ message: "Pricing plan saved", plan: saved });
-    } catch (err) {
+    } catch (err: unknown) {
       fastify.log.error(err);
-      return reply.code(500).send({ error: "Failed to save pricing plan", detail: err?.message ?? err });
+    
+      return reply.code(500).send({
+        error: "Failed to save pricing plan",
+        detail: err instanceof Error ? err.message : String(err)
+      });
     }
   });
 

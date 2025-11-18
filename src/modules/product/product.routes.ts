@@ -11,6 +11,21 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
         return reply.code(400).send({ error: "Product name is required" });
       }
 
+      const cleanName = name.trim();
+
+      const existing = await fastify.prisma.product.findFirst({
+        where: {
+          name: {
+            equals: cleanName,
+            mode: "insensitive"
+          }
+        }
+      });
+
+      if (existing) {
+        return reply.code(400).send({ error: "Product already exists" });
+      }
+
       // If product name is unique constraint in schema, use upsert
       const product = await fastify.prisma.product.upsert({
         where: { name },
@@ -48,9 +63,12 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
       }
 
       return reply.send({ product, meteredUsage });
-    } catch (err) {
+    } catch (err: unknown) {
       fastify.log.error(err);
-      return reply.code(500).send({ error: "Failed to create product", detail: err?.message ?? err });
+      return reply.code(500).send({
+        error: "Failed to create product",
+        detail: err instanceof Error ? err.message : String(err)
+      });
     }
   });
 
