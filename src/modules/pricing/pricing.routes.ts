@@ -1,13 +1,12 @@
 import { FastifyInstance } from "fastify";
 
 export default async function PricingPlanRoutes(fastify: FastifyInstance) {
-  // Create OR update a pricing plan
   fastify.post("/", async (req, reply) => {
     try {
       const data = req.body as any;
 
       const {
-        planId,            // optional: if present -> update that plan
+        planId,
         planType,
         planName,
         description,
@@ -15,7 +14,8 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
         basePrice,
         creditsIncluded,
         validity,
-        meteredUsages     // array of { productId?, name?, credits }
+        meteredProducts,
+        includedProducts,
       } = data;
 
       const planData = {
@@ -45,11 +45,8 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // === Ensure meteredUsages processed ===
-      // meteredUsages can contain items with productId OR name.
-      // If name provided (new product name), we attempt to find product by name, otherwise we expect productId.
-      if (Array.isArray(meteredUsages)) {
-        for (const item of meteredUsages) {
+      if (Array.isArray(meteredProducts)) {
+        for (const item of meteredProducts) {
           // resolve productId:
           let productId = item.productId ?? null;
 
@@ -70,12 +67,59 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
 
           if (!productId) {
             // skip invalid item
-            fastify.log.warn(`Skipping meteredUsage item without productId or name: ${JSON.stringify(item)}`);
+            fastify.log.warn(`Skipping meteredProduct item without productId or name: ${JSON.stringify(item)}`);
             continue;
           }
 
-          // Upsert meteredUsage using unique compound key
-          await fastify.prisma.meteredUsage.upsert({
+          // Upsert meteredProduct using unique compound key
+          await fastify.prisma.meteredProduct.upsert({
+            where: {
+              planId_productId: {
+                planId: plan.id,
+                productId
+              }
+            },
+            update: {
+              credits: item.credits,
+              isActive: true
+            },
+            create: {
+              planId: plan.id,
+              productId,
+              credits: item.credits
+            }
+          });
+        }
+      }
+      
+      if (includedProducts !== undefined && Array.isArray(includedProducts)) {
+        for (const item of includedProducts) {
+          // resolve productId:
+          let productId = item.productId ?? null;
+
+          if (!productId && item.name) {
+            // find product by name (case-insensitive) or create it
+            const existing = await fastify.prisma.product.findUnique({
+              where: { name: item.name }
+            }).catch(() => null);
+
+            if (existing) productId = existing.id;
+            else {
+              const created = await fastify.prisma.product.create({
+                data: { name: item.name }
+              });
+              productId = created.id;
+            }
+          }
+
+          if (!productId) {
+            // skip invalid item
+            fastify.log.warn(`Skipping meteredProduct item without productId or name: ${JSON.stringify(item)}`);
+            continue;
+          }
+
+          // Upsert meteredProduct using unique compound key
+          await fastify.prisma.includedProduct.upsert({
             where: {
               planId_productId: {
                 planId: plan.id,
@@ -99,7 +143,10 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
       const saved = await fastify.prisma.pricingPlan.findUnique({
         where: { id: plan.id },
         include: {
-          meteredUsages: {
+          meteredProducts: {
+            include: { product: true }
+          },
+          includedProducts: {
             include: { product: true }
           }
         }
@@ -127,9 +174,8 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
     try {
       const plans = await fastify.prisma.pricingPlan.findMany({
         include: {
-          meteredUsages: {
-            include: { product: true }
-          }
+          meteredProducts: { include: { product: true } },
+          includedProducts: { include: { product: true } }
         },
         orderBy: { id: "asc" }
       });

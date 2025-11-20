@@ -48,12 +48,27 @@ CREATE TABLE "Restaurant" (
 );
 
 -- CreateTable
+CREATE TABLE "RestaurantPricingPlan" (
+    "id" SERIAL NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "restaurantId" INTEGER NOT NULL,
+    "pricingPlanId" INTEGER NOT NULL,
+    "cgst" BOOLEAN NOT NULL DEFAULT false,
+    "sgst" BOOLEAN NOT NULL DEFAULT false,
+    "igst" BOOLEAN NOT NULL DEFAULT false,
+    "addLut" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "RestaurantPricingPlan_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "PricingPlan" (
     "id" SERIAL NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "planType" TEXT NOT NULL,
     "planName" TEXT NOT NULL,
     "description" TEXT,
+    "fixedPrice" DOUBLE PRECISION,
     "basePrice" DOUBLE PRECISION NOT NULL,
     "creditsIncluded" DOUBLE PRECISION NOT NULL,
     "validity" DOUBLE PRECISION,
@@ -71,7 +86,7 @@ CREATE TABLE "Product" (
 );
 
 -- CreateTable
-CREATE TABLE "MeteredUsage" (
+CREATE TABLE "MeteredProduct" (
     "id" SERIAL NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "planId" INTEGER NOT NULL,
@@ -79,17 +94,38 @@ CREATE TABLE "MeteredUsage" (
     "credits" DOUBLE PRECISION NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
-    CONSTRAINT "MeteredUsage_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "MeteredProduct_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "IncludedProduct" (
+    "id" SERIAL NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "planId" INTEGER NOT NULL,
+    "productId" INTEGER NOT NULL,
+    "credits" DOUBLE PRECISION NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "IncludedProduct_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "RestaurantPricingPlan_restaurantId_pricingPlanId_key" ON "RestaurantPricingPlan"("restaurantId", "pricingPlanId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PricingPlan_planName_key" ON "PricingPlan"("planName");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Product_name_key" ON "Product"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "MeteredUsage_planId_productId_key" ON "MeteredUsage"("planId", "productId");
+CREATE UNIQUE INDEX "MeteredProduct_planId_productId_key" ON "MeteredProduct"("planId", "productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "IncludedProduct_planId_productId_key" ON "IncludedProduct"("planId", "productId");
 
 -- AddForeignKey
 ALTER TABLE "Brand" ADD CONSTRAINT "Brand_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -98,7 +134,19 @@ ALTER TABLE "Brand" ADD CONSTRAINT "Brand_businessId_fkey" FOREIGN KEY ("busines
 ALTER TABLE "Restaurant" ADD CONSTRAINT "Restaurant_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MeteredUsage" ADD CONSTRAINT "MeteredUsage_planId_fkey" FOREIGN KEY ("planId") REFERENCES "PricingPlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "RestaurantPricingPlan" ADD CONSTRAINT "RestaurantPricingPlan_restaurantId_fkey" FOREIGN KEY ("restaurantId") REFERENCES "Restaurant"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "MeteredUsage" ADD CONSTRAINT "MeteredUsage_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "RestaurantPricingPlan" ADD CONSTRAINT "RestaurantPricingPlan_pricingPlanId_fkey" FOREIGN KEY ("pricingPlanId") REFERENCES "PricingPlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MeteredProduct" ADD CONSTRAINT "MeteredProduct_planId_fkey" FOREIGN KEY ("planId") REFERENCES "PricingPlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MeteredProduct" ADD CONSTRAINT "MeteredProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "IncludedProduct" ADD CONSTRAINT "IncludedProduct_planId_fkey" FOREIGN KEY ("planId") REFERENCES "PricingPlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "IncludedProduct" ADD CONSTRAINT "IncludedProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

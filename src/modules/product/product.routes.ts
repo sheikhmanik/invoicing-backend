@@ -22,9 +22,9 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
         }
       });
 
-      if (existing) {
-        return reply.code(400).send({ error: "Product already exists" });
-      }
+      // if (existing) {
+      //   return reply.code(400).send({ error: "Product already exists" });
+      // }
 
       // If product name is unique constraint in schema, use upsert
       const product = await fastify.prisma.product.upsert({
@@ -33,7 +33,7 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
         create: { name }
       });
 
-      let meteredUsage = null;
+      let meteredProduct = null;
       if (credit !== undefined && credit !== null && !isNaN(Number(credit))) {
         // find a metered plan (first)
         const meteredPlan = await fastify.prisma.pricingPlan.findFirst({
@@ -42,7 +42,7 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
 
         if (meteredPlan) {
           // create or upsert metered usage
-          meteredUsage = await fastify.prisma.meteredUsage.upsert({
+          meteredProduct = await fastify.prisma.meteredProduct.upsert({
             where: {
               planId_productId: {
                 planId: meteredPlan.id,
@@ -62,7 +62,7 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
         }
       }
 
-      return reply.send({ product, meteredUsage });
+      return reply.send({ product, meteredProduct });
     } catch (err: unknown) {
       fastify.log.error(err);
       return reply.code(500).send({
@@ -72,8 +72,19 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // GET products (simple)
+  // GET All products (simple)
   fastify.get("/", async (req, reply) => {
+    try {
+      const products = await fastify.prisma.product.findMany({ orderBy: { name: "asc" }});
+      return reply.send(products);
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.code(500).send({ error: "Failed to fetch products" });
+    }
+  });
+  
+  // GET Metered products (simple)
+  fastify.get("/meteredProducts", async (req, reply) => {
     try {
       const products = await fastify.prisma.product.findMany({ orderBy: { name: "asc" }});
       return reply.send(products);
