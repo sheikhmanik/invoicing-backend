@@ -47,6 +47,7 @@ model Restaurant {
   brandId                Int
   brand                  Brand                   @relation(fields: [brandId], references: [id])
   restaurantPricingPlans RestaurantPricingPlan[]
+  invoices               Invoice[]
 }
 
 model RestaurantPricingPlan {
@@ -59,12 +60,32 @@ model RestaurantPricingPlan {
   pricingPlanId Int
   pricingPlan   PricingPlan @relation(fields: [pricingPlanId], references: [id])
 
-  cgst   Boolean @default(false)
-  sgst   Boolean @default(false)
-  igst   Boolean @default(false)
-  addLut Boolean @default(false)
+  cgst      Boolean  @default(false)
+  sgst      Boolean  @default(false)
+  igst      Boolean  @default(false)
+  addLut    Boolean  @default(false)
+  startDate DateTime @default(now())
+  planMode  String
+  trialDays Int?
 
   @@unique([restaurantId, pricingPlanId])
+}
+
+model Invoice {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  pricingPlanId Int
+  pricingPlan   PricingPlan @relation(fields: [pricingPlanId], references: [id])
+
+  totalAmount   Float
+  dueDate       DateTime
+  invoiceNumber String   @unique
+
+  status String @default("pending")
 }
 
 model PricingPlan {
@@ -81,6 +102,7 @@ model PricingPlan {
   meteredProducts        MeteredProduct[]
   includedProducts       IncludedProduct[]
   restaurantPricingPlans RestaurantPricingPlan[]
+  invoices               Invoice[]
 }
 
 model Product {

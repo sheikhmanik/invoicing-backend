@@ -1,7 +1,6 @@
 import { FastifyInstance } from "fastify";
 
 export default async function restaurantRoutes(fastify: FastifyInstance) {
-  // ➤ Create restaurant
   fastify.post("/", async (req, reply) => {
     const {
       name,
@@ -11,7 +10,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       FSSAI,
       PrimaryContactName,
       PrimaryContactPhone,
-      brandId
+      brandId,
     } = req.body as any;
 
     try {
@@ -37,7 +36,17 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
 
   // Post/Create specifc Restaurant Plan
   fastify.post("/plan-map", async (req, reply) => {
-    const { restaurantId, pricingPlanId, CGST, SGST, IGST, LUT } = req.body as any;
+    const {
+      restaurantId,
+      pricingPlanId,
+      CGST,
+      SGST,
+      IGST,
+      LUT,
+      startDate,
+      planMode,
+      trialDays,
+    } = req.body as any;
 
     const restaurantExists = await fastify.prisma.restaurant.findUnique({
       where: { id: Number(restaurantId) }
@@ -65,6 +74,9 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           sgst: Boolean(SGST),
           igst: Boolean(IGST),
           addLut: Boolean(LUT),
+          startDate: new Date(startDate),
+          planMode: planMode,
+          trialDays: trialDays,
         },
         create: {
           restaurantId: Number(restaurantId),
@@ -73,8 +85,55 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           sgst: Boolean(SGST),
           igst: Boolean(IGST),
           addLut: Boolean(LUT),
+          startDate: new Date(startDate),
+          planMode: planMode,
+          trialDays: trialDays,
         },
       });
+
+
+
+
+
+
+
+
+      const base = Number(planExists.basePrice); // or fixedPrice if hybrid — adjust as needed
+
+      // TAX calculations
+      const cgstAmount = CGST ? base * 0.09 : 0;
+      const sgstAmount = SGST ? base * 0.09 : 0;
+      const igstAmount = IGST ? base * 0.18 : 0;
+
+      // FINAL total
+      const totalAmount = base + cgstAmount + sgstAmount + igstAmount;
+
+      // due date = 10 days from startDate
+      const dueDate = new Date(startDate);
+      dueDate.setDate(dueDate.getDate() + 10);
+
+      // invoice number example:
+      const invoiceNumber = `INV-${Date.now()}`;
+
+      const invoice = {
+        restaurantId: Number(restaurantId),
+        pricingPlanId: Number(pricingPlanId),
+        totalAmount: totalAmount,
+        dueDate: dueDate,
+        invoiceNumber: invoiceNumber,
+        status: "pending"
+      };
+
+      await fastify.prisma.invoice.create({ data: invoice });
+
+
+
+
+
+
+
+
+
 
       return reply.send({ message: "Plan assigned successfully", data: saved });
     } catch (err) {
@@ -97,7 +156,20 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           },
         },
         include: {
-          pricingPlan: true, // returns full PricingPlan object
+          pricingPlan: {
+            include: {
+              meteredProducts: {
+                include: {
+                  product: true
+                }
+              },
+              includedProducts: {
+                include: {
+                  product: true
+                }
+              }
+            }
+          },
         },
       });
 
@@ -133,7 +205,13 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           include: {
             business: true
           }
-        }
+        },
+        restaurantPricingPlans: {
+          include: {
+            pricingPlan: true
+          }
+        },
+        invoices: true
       }
     });
   });

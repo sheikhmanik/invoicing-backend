@@ -57,6 +57,9 @@ CREATE TABLE "RestaurantPricingPlan" (
     "sgst" BOOLEAN NOT NULL DEFAULT false,
     "igst" BOOLEAN NOT NULL DEFAULT false,
     "addLut" BOOLEAN NOT NULL DEFAULT false,
+    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "planMode" TEXT NOT NULL,
+    "trialDays" INTEGER,
 
     CONSTRAINT "RestaurantPricingPlan_pkey" PRIMARY KEY ("id")
 );
