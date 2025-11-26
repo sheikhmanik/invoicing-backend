@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 
 export default async function restaurantRoutes(fastify: FastifyInstance) {
+  
   fastify.post("/", async (req, reply) => {
     const {
       name,
@@ -91,13 +92,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         },
       });
 
-
-
-
-
-
-
-
       const base = Number(planExists.basePrice); // or fixedPrice if hybrid — adjust as needed
 
       // TAX calculations
@@ -112,33 +106,150 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       const dueDate = new Date(startDate);
       dueDate.setDate(dueDate.getDate() + 10);
 
-      // invoice number example:
-      const invoiceNumber = `INV-${Date.now()}`;
+      // -------------------------
+      //  PROFORMA & INVOICE NUMBERS
+      // -------------------------
+
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);             // e.g. "25"
+      const month = String(now.getMonth() + 1).padStart(2, "0");       // e.g. "11"
+
+      // 1) Generate Proforma Number: E/PI/YY/MM/0001
+      const lastProforma = await fastify.prisma.invoice.findFirst({
+        where: {
+          proformaNumber: {
+            startsWith: `E/PI/${year}/${month}/`,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      let proformaSeq = 1;
+      if (lastProforma?.proformaNumber) {
+        const lastPart = lastProforma.proformaNumber.split("/").pop() || "0";
+        const parsed = Number(lastPart);
+        proformaSeq = Number.isFinite(parsed) ? parsed + 1 : 1;
+      }
+      const proformaSeqPadded = String(proformaSeq).padStart(4, "0");
+      const proformaNumber = `E/PI/${year}/${month}/${proformaSeqPadded}`;
+
+      // 2) Generate Invoice Number: E/I/YY/MM/0001
+      const lastInvoiceForMonth = await fastify.prisma.invoice.findFirst({
+        where: {
+          invoiceNumber: {
+            startsWith: `E/I/${year}/${month}/`,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      let invoiceSeq = 1;
+      if (lastInvoiceForMonth?.invoiceNumber) {
+        const lastPart = lastInvoiceForMonth.invoiceNumber.split("/").pop() || "0";
+        const parsed = Number(lastPart);
+        invoiceSeq = Number.isFinite(parsed) ? parsed + 1 : 1;
+      }
+      const invoiceSeqPadded = String(invoiceSeq).padStart(4, "0");
+      const invoiceNumber = `E/I/${year}/${month}/${invoiceSeqPadded}`;
+
+      // -------------------------
+      //  CREATE INVOICE ROW
+      // -------------------------
 
       const invoice = {
         restaurantId: Number(restaurantId),
         pricingPlanId: Number(pricingPlanId),
-        totalAmount: totalAmount,
-        dueDate: dueDate,
-        invoiceNumber: invoiceNumber,
-        status: "pending"
+        totalAmount,
+        dueDate,
+        proformaNumber,   // 👈 new
+        invoiceNumber,    // 👈 final invoice number reserved
+        status: "pending" // still pending until payment is updated
       };
 
       await fastify.prisma.invoice.create({ data: invoice });
-
-
-
-
-
-
-
-
-
 
       return reply.send({ message: "Plan assigned successfully", data: saved });
     } catch (err) {
       console.error("Error mapping plan:", err);
       return reply.code(500).send({ error: "Failed to assign plan" });
+    }
+  });
+
+  fastify.post("/update-payment", async (req, reply) => {
+    const {
+      currentResId,
+      paymentDate,
+      paymentNotes,
+      isPartial
+    } = req.body as any;
+  
+    if (!currentResId || !paymentDate) {
+      return reply.code(400).send({ error: "Missing required fields" });
+    }
+  
+    try {
+      const restaurant = await fastify.prisma.restaurant.findUnique({
+        where: { id: Number(currentResId) },
+        include: { invoices: true }
+      });
+  
+      if (!restaurant) {
+        return reply.code(404).send({ error: "Restaurant not found" });
+      }
+  
+      const lastInvoice = restaurant.invoices[restaurant.invoices.length - 1];
+  
+      if (!lastInvoice) {
+        return reply.code(400).send({
+          error: "Restaurant has no invoice. Assign a plan first."
+        });
+      }
+  
+      const totalAmount = lastInvoice.totalAmount;
+  
+      // Generate new Invoice Number
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+  
+      const lastFinal = await fastify.prisma.invoice.findFirst({
+        where: {
+          invoiceNumber: {
+            startsWith: `E/I/${year}/${month}/`,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+  
+      let seq = 1;
+      if (lastFinal?.invoiceNumber) {
+        seq = Number(lastFinal.invoiceNumber.split("/").pop()) + 1;
+      }
+  
+      const invoiceNumber = `E/I/${year}/${month}/${String(seq).padStart(4, "0")}`;
+  
+      const newInvoice = await fastify.prisma.invoice.create({
+        data: {
+          restaurantId: Number(currentResId),
+          pricingPlanId: lastInvoice.pricingPlanId, // Copy old plan
+          totalAmount,
+          proformaNumber: lastInvoice.proformaNumber,
+          invoiceNumber,
+          status: "paid",
+          paymentDate: new Date(paymentDate),
+          paymentNotes: paymentNotes || null,
+          isPartialPayment: isPartial === "Yes",
+        },
+      });
+  
+      return reply.send({
+        message: "Payment updated successfully",
+        invoice: newInvoice
+      });
+  
+    } catch (err) {
+      console.error("Payment update failed:", err);
+      return reply.code(500).send({ error: "Internal server error" });
     }
   });
 

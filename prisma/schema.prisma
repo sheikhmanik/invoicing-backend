@@ -72,20 +72,24 @@ model RestaurantPricingPlan {
 }
 
 model Invoice {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id                Int            @id @default(autoincrement())
+  createdAt         DateTime       @default(now())
 
-  restaurantId Int
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId      Int
+  restaurant        Restaurant     @relation(fields: [restaurantId], references: [id])
 
-  pricingPlanId Int
-  pricingPlan   PricingPlan @relation(fields: [pricingPlanId], references: [id])
+  pricingPlanId     Int
+  pricingPlan       PricingPlan    @relation(fields: [pricingPlanId], references: [id])
 
-  totalAmount   Float
-  dueDate       DateTime
-  invoiceNumber String   @unique
+  totalAmount       Float
+  dueDate           DateTime
+  proformaNumber    String?
+  invoiceNumber     String?        @unique
+  paymentDate       DateTime?
+  paymentNotes      String?
+  isPartialPayment  Boolean        @default(false)
 
-  status String @default("pending")
+  status          String         @default("pending")
 }
 
 model PricingPlan {
