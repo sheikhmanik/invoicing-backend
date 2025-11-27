@@ -70,13 +70,14 @@ CREATE TABLE "Invoice" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "restaurantId" INTEGER NOT NULL,
     "pricingPlanId" INTEGER NOT NULL,
+    "subTotalAmount" DOUBLE PRECISION,
     "totalAmount" DOUBLE PRECISION NOT NULL,
     "dueDate" TIMESTAMP(3) NOT NULL,
     "proformaNumber" TEXT,
     "invoiceNumber" TEXT,
     "paymentDate" TIMESTAMP(3),
     "paymentNotes" TEXT,
-    "isPartialPayment" TEXT,
+    "isPartialPayment" BOOLEAN NOT NULL DEFAULT false,
     "status" TEXT NOT NULL DEFAULT 'pending',
 
     CONSTRAINT "Invoice_pkey" PRIMARY KEY ("id")

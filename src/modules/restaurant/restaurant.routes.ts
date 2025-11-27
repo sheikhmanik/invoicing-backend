@@ -1,6 +1,10 @@
 import { FastifyInstance } from "fastify";
+import multer from "fastify-multer";
 
 export default async function restaurantRoutes(fastify: FastifyInstance) {
+
+  fastify.register(multer.contentParser); // Must be above routes
+  const upload = multer({ dest: "uploads/payment-proofs/" });
   
   fastify.post("/", async (req, reply) => {
     const {
@@ -35,7 +39,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Post/Create specifc Restaurant Plan
   fastify.post("/plan-map", async (req, reply) => {
     const {
       restaurantId,
@@ -159,6 +162,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       const invoice = {
         restaurantId: Number(restaurantId),
         pricingPlanId: Number(pricingPlanId),
+        subTotalAmount: planExists.basePrice,
         totalAmount,
         dueDate,
         proformaNumber,   // 👈 new
@@ -175,12 +179,55 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     }
   });
 
+  fastify.post("/update-tax-settings", async (req, reply) => {
+    const {
+      restaurantId,
+      pricingPlanId,
+      CGST,
+      SGST,
+      IGST,
+      LUT,
+      startDate,
+      planMode,
+      trialDays,
+    } = req.body as any;
+  
+    try {
+      const updated = await fastify.prisma.restaurantPricingPlan.update({
+        where: {
+          restaurantId_pricingPlanId: {
+            restaurantId: Number(restaurantId),
+            pricingPlanId: Number(pricingPlanId),
+          },
+        },
+        data: {
+          cgst: Boolean(CGST),
+          sgst: Boolean(SGST),
+          igst: Boolean(IGST),
+          addLut: Boolean(LUT),
+          startDate: new Date(startDate),
+          planMode,
+          trialDays,
+        },
+      });
+  
+      return reply.send({
+        message: "Plan updated successfully",
+        updated,
+      });
+  
+    } catch (err) {
+      console.error("Update Tax Settings Failed:", err);
+      return reply.code(500).send({ error: "Failed to update tax settings" });
+    }
+  });
+
   fastify.post("/update-payment", async (req, reply) => {
     const {
       currentResId,
       paymentDate,
       paymentNotes,
-      isPartial
+      isPartial,
     } = req.body as any;
   
     if (!currentResId || !paymentDate) {
@@ -207,7 +254,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
   
       const totalAmount = lastInvoice.totalAmount;
   
-      // Generate new Invoice Number
       const now = new Date();
       const year = now.getFullYear().toString().slice(-2);
       const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -231,8 +277,9 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       const newInvoice = await fastify.prisma.invoice.create({
         data: {
           restaurantId: Number(currentResId),
-          pricingPlanId: lastInvoice.pricingPlanId, // Copy old plan
+          pricingPlanId: lastInvoice.pricingPlanId,
           totalAmount,
+          dueDate: lastInvoice.dueDate,
           proformaNumber: lastInvoice.proformaNumber,
           invoiceNumber,
           status: "paid",
@@ -253,7 +300,86 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Get specific Restaurant Plan (specific route — stays above the generic one)
+  // fastify.post("/update-payment", { preHandler: upload.single("paymentProof") }, async (req, reply) => {
+  //   const {
+  //     currentResId,
+  //     paymentDate,
+  //     paymentNotes,
+  //     isPartial,
+  //   } = req.body as any;
+  //   const file = (req as any).file;
+  
+  //   if (!currentResId || !paymentDate) {
+  //     return reply.code(400).send({ error: "Missing required fields" });
+  //   }
+  
+  //   try {
+  //     const restaurant = await fastify.prisma.restaurant.findUnique({
+  //       where: { id: Number(currentResId) },
+  //       include: { invoices: true }
+  //     });
+  
+  //     if (!restaurant) {
+  //       return reply.code(404).send({ error: "Restaurant not found" });
+  //     }
+  
+  //     const lastInvoice = restaurant.invoices[restaurant.invoices.length - 1];
+  
+  //     if (!lastInvoice) {
+  //       return reply.code(400).send({
+  //         error: "Restaurant has no invoice. Assign a plan first."
+  //       });
+  //     }
+  
+  //     const totalAmount = lastInvoice.totalAmount;
+  
+  //     const now = new Date();
+  //     const year = now.getFullYear().toString().slice(-2);
+  //     const month = String(now.getMonth() + 1).padStart(2, "0");
+  
+  //     const lastFinal = await fastify.prisma.invoice.findFirst({
+  //       where: {
+  //         invoiceNumber: {
+  //           startsWith: `E/I/${year}/${month}/`,
+  //         },
+  //       },
+  //       orderBy: { createdAt: "desc" },
+  //     });
+  
+  //     let seq = 1;
+  //     if (lastFinal?.invoiceNumber) {
+  //       seq = Number(lastFinal.invoiceNumber.split("/").pop()) + 1;
+  //     }
+  
+  //     const invoiceNumber = `E/I/${year}/${month}/${String(seq).padStart(4, "0")}`;
+  
+  //     const newInvoice = await fastify.prisma.invoice.create({
+  //       data: {
+  //         restaurantId: Number(currentResId),
+  //         pricingPlanId: lastInvoice.pricingPlanId,
+  //         totalAmount,
+  //         dueDate: lastInvoice.dueDate,
+  //         proformaNumber: lastInvoice.proformaNumber,
+  //         invoiceNumber,
+  //         status: "paid",
+  //         paymentDate: new Date(paymentDate),
+  //         paymentNotes: paymentNotes || null,
+  //         isPartialPayment: isPartial === "Yes",
+  //         paymentFile: file?.filename || null,
+  //       },
+  //     });
+  
+  //     return reply.send({
+  //       message: "Payment updated successfully",
+  //       invoice: newInvoice
+  //     });
+  
+  //   } catch (err) {
+  //     console.error("Payment update failed:", err);
+  //     return reply.code(500).send({ error: "Internal server error" });
+  //   }
+  // });
+
   fastify.get("/plan-map/:restaurantId/:pricingPlanId", async (request, reply) => {
     const { restaurantId, pricingPlanId } = request.params as any;
 
@@ -295,7 +421,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Get specific Restaurant's pricingPlanId
   fastify.get("/plan-map/:restaurantId", async (request, reply) => {
     const { restaurantId } = request.params as any;
 
@@ -308,7 +433,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     return reply.send(mapping);
   });
 
-  // ➤ Get all restaurants
   fastify.get("/", async () => {
     return fastify.prisma.restaurant.findMany({
       include: {

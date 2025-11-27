@@ -81,6 +81,7 @@ model Invoice {
   pricingPlanId     Int
   pricingPlan       PricingPlan    @relation(fields: [pricingPlanId], references: [id])
 
+  subTotalAmount    Float?
   totalAmount       Float
   dueDate           DateTime
   proformaNumber    String?
@@ -88,8 +89,9 @@ model Invoice {
   paymentDate       DateTime?
   paymentNotes      String?
   isPartialPayment  Boolean        @default(false)
+  paymentFile       String?
 
-  status          String         @default("pending")
+  status            String         @default("pending")
 }
 
 model PricingPlan {
