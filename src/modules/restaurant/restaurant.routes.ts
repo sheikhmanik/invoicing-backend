@@ -1,10 +1,7 @@
 import { FastifyInstance } from "fastify";
-import multer from "fastify-multer";
 
 export default async function restaurantRoutes(fastify: FastifyInstance) {
 
-  fastify.register(multer.contentParser); // Must be above routes
-  const upload = multer({ dest: "uploads/payment-proofs/" });
   
   fastify.post("/", async (req, reply) => {
     const {
@@ -228,6 +225,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       paymentDate,
       paymentNotes,
       isPartial,
+      paymentFileUrl,
     } = req.body as any;
   
     if (!currentResId || !paymentDate) {
@@ -286,6 +284,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           paymentDate: new Date(paymentDate),
           paymentNotes: paymentNotes || null,
           isPartialPayment: isPartial === "Yes",
+          paymentFileUrl,
         },
       });
   
@@ -299,86 +298,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       return reply.code(500).send({ error: "Internal server error" });
     }
   });
-
-  // fastify.post("/update-payment", { preHandler: upload.single("paymentProof") }, async (req, reply) => {
-  //   const {
-  //     currentResId,
-  //     paymentDate,
-  //     paymentNotes,
-  //     isPartial,
-  //   } = req.body as any;
-  //   const file = (req as any).file;
-  
-  //   if (!currentResId || !paymentDate) {
-  //     return reply.code(400).send({ error: "Missing required fields" });
-  //   }
-  
-  //   try {
-  //     const restaurant = await fastify.prisma.restaurant.findUnique({
-  //       where: { id: Number(currentResId) },
-  //       include: { invoices: true }
-  //     });
-  
-  //     if (!restaurant) {
-  //       return reply.code(404).send({ error: "Restaurant not found" });
-  //     }
-  
-  //     const lastInvoice = restaurant.invoices[restaurant.invoices.length - 1];
-  
-  //     if (!lastInvoice) {
-  //       return reply.code(400).send({
-  //         error: "Restaurant has no invoice. Assign a plan first."
-  //       });
-  //     }
-  
-  //     const totalAmount = lastInvoice.totalAmount;
-  
-  //     const now = new Date();
-  //     const year = now.getFullYear().toString().slice(-2);
-  //     const month = String(now.getMonth() + 1).padStart(2, "0");
-  
-  //     const lastFinal = await fastify.prisma.invoice.findFirst({
-  //       where: {
-  //         invoiceNumber: {
-  //           startsWith: `E/I/${year}/${month}/`,
-  //         },
-  //       },
-  //       orderBy: { createdAt: "desc" },
-  //     });
-  
-  //     let seq = 1;
-  //     if (lastFinal?.invoiceNumber) {
-  //       seq = Number(lastFinal.invoiceNumber.split("/").pop()) + 1;
-  //     }
-  
-  //     const invoiceNumber = `E/I/${year}/${month}/${String(seq).padStart(4, "0")}`;
-  
-  //     const newInvoice = await fastify.prisma.invoice.create({
-  //       data: {
-  //         restaurantId: Number(currentResId),
-  //         pricingPlanId: lastInvoice.pricingPlanId,
-  //         totalAmount,
-  //         dueDate: lastInvoice.dueDate,
-  //         proformaNumber: lastInvoice.proformaNumber,
-  //         invoiceNumber,
-  //         status: "paid",
-  //         paymentDate: new Date(paymentDate),
-  //         paymentNotes: paymentNotes || null,
-  //         isPartialPayment: isPartial === "Yes",
-  //         paymentFile: file?.filename || null,
-  //       },
-  //     });
-  
-  //     return reply.send({
-  //       message: "Payment updated successfully",
-  //       invoice: newInvoice
-  //     });
-  
-  //   } catch (err) {
-  //     console.error("Payment update failed:", err);
-  //     return reply.code(500).send({ error: "Internal server error" });
-  //   }
-  // });
 
   fastify.get("/plan-map/:restaurantId/:pricingPlanId", async (request, reply) => {
     const { restaurantId, pricingPlanId } = request.params as any;
