@@ -263,7 +263,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         dueDate: lastInvoice.dueDate,
         proformaNumber: lastInvoice.proformaNumber,
         invoiceNumber,
-        status: "pending" // still pending until payment is updated
+        status: lastInvoice.status,
       };
 
       await fastify.prisma.invoice.create({ data: invoice });
@@ -340,7 +340,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           pricingPlanId: lastInvoice.pricingPlanId,
           subTotalAmount: lastInvoice.subTotalAmount,
           totalAmount: lastInvoice.totalAmount,
-          partialAmount: lastInvoice.partialAmount ? lastInvoice.partialAmount + partialAmount : partialAmount,
+          partialAmount: partialAmount,
           remainingAmount: updatedRemainingAmount,
           dueDate: lastInvoice.dueDate,
           proformaNumber: lastInvoice.proformaNumber,
