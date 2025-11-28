@@ -9,7 +9,8 @@ export default async function businessRoutes(fastify: FastifyInstance) {
       location,
       GSTIN,
       PrimaryContactName,
-      PrimaryContactPhone
+      PrimaryContactPhone,
+      PrimaryContactEmail,
     } = req.body as any;
 
     try {
@@ -21,6 +22,7 @@ export default async function businessRoutes(fastify: FastifyInstance) {
           GSTIN,
           PrimaryContactName,
           PrimaryContactPhone,
+          PrimaryContactEmail,
         },
       });
 

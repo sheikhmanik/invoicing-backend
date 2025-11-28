@@ -19,6 +19,7 @@ CREATE TABLE "Business" (
     "GSTIN" TEXT NOT NULL,
     "PrimaryContactName" TEXT NOT NULL,
     "PrimaryContactPhone" TEXT NOT NULL,
+    "PrimaryContactEmail" TEXT NOT NULL,
 
     CONSTRAINT "Business_pkey" PRIMARY KEY ("id")
 );
@@ -70,14 +71,17 @@ CREATE TABLE "Invoice" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "restaurantId" INTEGER NOT NULL,
     "pricingPlanId" INTEGER NOT NULL,
-    "subTotalAmount" DOUBLE PRECISION,
+    "subTotalAmount" DOUBLE PRECISION NOT NULL,
     "totalAmount" DOUBLE PRECISION NOT NULL,
+    "partialAmount" DOUBLE PRECISION,
+    "remainingAmount" DOUBLE PRECISION,
     "dueDate" TIMESTAMP(3) NOT NULL,
     "proformaNumber" TEXT,
     "invoiceNumber" TEXT,
     "paymentDate" TIMESTAMP(3),
     "paymentNotes" TEXT,
     "isPartialPayment" BOOLEAN NOT NULL DEFAULT false,
+    "paymentFileUrl" TEXT,
     "status" TEXT NOT NULL DEFAULT 'pending',
 
     CONSTRAINT "Invoice_pkey" PRIMARY KEY ("id")

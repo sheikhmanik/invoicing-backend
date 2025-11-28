@@ -24,6 +24,7 @@ model Business {
   GSTIN               String
   PrimaryContactName  String
   PrimaryContactPhone String
+  PrimaryContactEmail String
   brands              Brand[]
 }
 
@@ -81,8 +82,10 @@ model Invoice {
   pricingPlanId     Int
   pricingPlan       PricingPlan    @relation(fields: [pricingPlanId], references: [id])
 
-  subTotalAmount    Float?
+  subTotalAmount    Float
   totalAmount       Float
+  partialAmount     Float?
+  remainingAmount   Float?
   dueDate           DateTime
   proformaNumber    String?
   invoiceNumber     String?        @unique

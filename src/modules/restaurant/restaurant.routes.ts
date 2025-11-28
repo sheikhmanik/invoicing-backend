@@ -1,7 +1,6 @@
 import { FastifyInstance } from "fastify";
 
 export default async function restaurantRoutes(fastify: FastifyInstance) {
-
   
   fastify.post("/", async (req, reply) => {
     const {
@@ -161,6 +160,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         pricingPlanId: Number(pricingPlanId),
         subTotalAmount: planExists.basePrice,
         totalAmount,
+        remainingAmount: totalAmount,
         dueDate,
         proformaNumber,   // 👈 new
         invoiceNumber,    // 👈 final invoice number reserved
@@ -188,8 +188,19 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       planMode,
       trialDays,
     } = req.body as any;
+
+    const restaurantExists = await fastify.prisma.restaurant.findUnique({
+      where: { id: Number(restaurantId) }
+    });
+    if (!restaurantExists) return reply.send({ message: "Restaurant not found!" });
+
+    const planExists = await fastify.prisma.pricingPlan.findUnique({
+      where: { id: Number(pricingPlanId) }
+    });
+    if (!planExists) return reply.send({ message: "Plan doesn't exist!" });
   
     try {
+      
       const updated = await fastify.prisma.restaurantPricingPlan.update({
         where: {
           restaurantId_pricingPlanId: {
@@ -207,11 +218,57 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           trialDays,
         },
       });
-  
-      return reply.send({
-        message: "Plan updated successfully",
-        updated,
+
+      const base = Number(planExists.basePrice);
+
+      const cgstAmount = CGST ? base * 0.09 : 0;
+      const sgstAmount = SGST ? base * 0.09 : 0;
+      const igstAmount = IGST ? base * 0.18 : 0;
+
+      const totalAmount = base + cgstAmount + sgstAmount + igstAmount;
+
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);             // e.g. "25"
+      const month = String(now.getMonth() + 1).padStart(2, "0");       // e.g. "11"
+
+      // 2) Generate Invoice Number: E/I/YY/MM/0001
+      const lastInvoiceForMonth = await fastify.prisma.invoice.findFirst({
+        where: {
+          invoiceNumber: {
+            startsWith: `E/I/${year}/${month}/`,
+          },
+        },
+        orderBy: { createdAt: "desc" },
       });
+
+      let invoiceSeq = 1;
+      if (lastInvoiceForMonth?.invoiceNumber) {
+        const lastPart = lastInvoiceForMonth.invoiceNumber.split("/").pop() || "0";
+        const parsed = Number(lastPart);
+        invoiceSeq = Number.isFinite(parsed) ? parsed + 1 : 1;
+      }
+      const invoiceSeqPadded = String(invoiceSeq).padStart(4, "0");
+      const invoiceNumber = `E/I/${year}/${month}/${invoiceSeqPadded}`;
+
+      const lastInvoice = await fastify.prisma.invoice.findFirst({
+        where: { restaurantId: Number(restaurantId) },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const invoice = {
+        restaurantId: Number(restaurantId),
+        pricingPlanId: Number(pricingPlanId),
+        subTotalAmount: lastInvoice.subTotalAmount,
+        totalAmount,
+        dueDate: lastInvoice.dueDate,
+        proformaNumber: lastInvoice.proformaNumber,
+        invoiceNumber,
+        status: "pending" // still pending until payment is updated
+      };
+
+      await fastify.prisma.invoice.create({ data: invoice });
+  
+      return reply.send({ message: "Tax settings updated successfully.", updated });
   
     } catch (err) {
       console.error("Update Tax Settings Failed:", err);
@@ -225,6 +282,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       paymentDate,
       paymentNotes,
       isPartial,
+      partialAmount,
       paymentFileUrl,
     } = req.body as any;
   
@@ -250,8 +308,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         });
       }
   
-      const totalAmount = lastInvoice.totalAmount;
-  
       const now = new Date();
       const year = now.getFullYear().toString().slice(-2);
       const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -271,16 +327,25 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       }
   
       const invoiceNumber = `E/I/${year}/${month}/${String(seq).padStart(4, "0")}`;
+
+      const updatedRemainingAmount = lastInvoice.partialAmount
+      ? lastInvoice.totalAmount - (lastInvoice.partialAmount + partialAmount)
+      : lastInvoice.totalAmount - partialAmount
+
+      const updatedStatus = isPartial === "Yes" && partialAmount && updatedRemainingAmount > 0 ? "partially paid" : "paid";
   
       const newInvoice = await fastify.prisma.invoice.create({
         data: {
           restaurantId: Number(currentResId),
           pricingPlanId: lastInvoice.pricingPlanId,
-          totalAmount,
+          subTotalAmount: lastInvoice.subTotalAmount,
+          totalAmount: lastInvoice.totalAmount,
+          partialAmount: lastInvoice.partialAmount ? lastInvoice.partialAmount + partialAmount : partialAmount,
+          remainingAmount: updatedRemainingAmount,
           dueDate: lastInvoice.dueDate,
           proformaNumber: lastInvoice.proformaNumber,
           invoiceNumber,
-          status: "paid",
+          status: updatedStatus,
           paymentDate: new Date(paymentDate),
           paymentNotes: paymentNotes || null,
           isPartialPayment: isPartial === "Yes",
