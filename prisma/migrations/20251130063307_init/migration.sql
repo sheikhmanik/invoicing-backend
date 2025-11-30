@@ -95,11 +95,33 @@ CREATE TABLE "PricingPlan" (
     "planName" TEXT NOT NULL,
     "description" TEXT,
     "fixedPrice" DOUBLE PRECISION,
-    "basePrice" DOUBLE PRECISION NOT NULL,
-    "creditsIncluded" DOUBLE PRECISION NOT NULL,
-    "validity" DOUBLE PRECISION,
+    "basePrice" DOUBLE PRECISION,
+    "creditsIncluded" DOUBLE PRECISION,
+    "billingCycle" INTEGER,
+    "validity" INTEGER,
 
     CONSTRAINT "PricingPlan_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "FixedPlan" (
+    "id" SERIAL NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "price" DOUBLE PRECISION NOT NULL,
+    "billingCycle" INTEGER NOT NULL,
+
+    CONSTRAINT "FixedPlan_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MeteredPlan" (
+    "id" SERIAL NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "price" DOUBLE PRECISION NOT NULL,
+    "creditsIncluded" INTEGER NOT NULL,
+    "billingCycle" INTEGER NOT NULL,
+
+    CONSTRAINT "MeteredPlan_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -107,6 +129,7 @@ CREATE TABLE "Product" (
     "id" SERIAL NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "name" TEXT NOT NULL,
+    "license" TEXT,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
 );
@@ -129,7 +152,6 @@ CREATE TABLE "IncludedProduct" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "planId" INTEGER NOT NULL,
     "productId" INTEGER NOT NULL,
-    "credits" DOUBLE PRECISION NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "IncludedProduct_pkey" PRIMARY KEY ("id")

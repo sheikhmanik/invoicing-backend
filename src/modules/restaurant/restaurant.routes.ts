@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import { sendEmail } from "../../utils/mailer";
 
 export default async function restaurantRoutes(fastify: FastifyInstance) {
   
@@ -167,9 +168,37 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         status: "pending" // still pending until payment is updated
       };
 
-      await fastify.prisma.invoice.create({ data: invoice });
+      const createdInvoice = await fastify.prisma.invoice.create({ data: invoice });
 
-      return reply.send({ message: "Plan assigned successfully", data: saved });
+      const restaurant = await fastify.prisma.restaurant.findUnique({
+        where: { id: Number(restaurantId) },
+        include: {
+          brand: { include: { business: true } },
+          invoices: true,
+          restaurantPricingPlans: {
+            include: { pricingPlan: true }
+          }
+        }
+      });
+      const businessEmail = restaurant?.brand?.business?.PrimaryContactEmail;
+      if (businessEmail) {
+        await sendEmail(
+          businessEmail,
+          createdInvoice.invoiceNumber as string,
+          createdInvoice.totalAmount,
+          restaurant,
+          createdInvoice,
+          planExists,
+        );
+        console.log("📧 Email sent to:", businessEmail);
+      }
+
+      return reply.send({
+        message: "Plan updated successfully — Email Sent!",
+        saved,
+        invoice: createdInvoice,
+      });
+
     } catch (err) {
       console.error("Error mapping plan:", err);
       return reply.code(500).send({ error: "Failed to assign plan" });
@@ -255,20 +284,40 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         orderBy: { createdAt: "desc" },
       });
 
+      // Calculate old paid amount correctly
+      const previousPaid = Number(lastInvoice.paidAmount ?? 0);
+
+      // New remaining = new total - old paid
+      const remainingAmount = totalAmount - previousPaid;
+
+      const updatedStatus =
+        remainingAmount <= 0
+          ? "paid"
+          : previousPaid > 0
+          ? "partially paid"
+          : "pending"
+      ;
+
       const invoice = {
         restaurantId: Number(restaurantId),
         pricingPlanId: Number(pricingPlanId),
-        subTotalAmount: lastInvoice.subTotalAmount,
-        totalAmount,
+
+        subTotalAmount: planExists.basePrice, // or previous
+        totalAmount,      // NEW total after tax update
+
+        paidAmount: previousPaid,    // Keep cumulative payments
+        remainingAmount,             // NEW remaining
+
         dueDate: lastInvoice.dueDate,
         proformaNumber: lastInvoice.proformaNumber,
         invoiceNumber,
-        status: lastInvoice.status,
+
+        status: updatedStatus,
       };
 
       await fastify.prisma.invoice.create({ data: invoice });
   
-      return reply.send({ message: "Tax settings updated successfully.", updated });
+      return reply.send({ message: "Tax settings updated successfully.", updated, invoice });
   
     } catch (err) {
       console.error("Update Tax Settings Failed:", err);
@@ -328,27 +377,39 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
   
       const invoiceNumber = `E/I/${year}/${month}/${String(seq).padStart(4, "0")}`;
 
-      const updatedRemainingAmount = lastInvoice.partialAmount
-      ? lastInvoice.totalAmount - (lastInvoice.partialAmount + partialAmount)
-      : lastInvoice.totalAmount - partialAmount
+      const previousPaid = Number(lastInvoice.paidAmount ?? 0);
+      const newPayment = Number(partialAmount ?? 0);
+      const totalPaid = previousPaid + newPayment;
 
-      const updatedStatus = isPartial === "Yes" && partialAmount && updatedRemainingAmount > 0 ? "partially paid" : "paid";
-  
+      const remainingAmount = Number(lastInvoice.totalAmount) - totalPaid;
+
+      const updatedStatus =
+        remainingAmount <= 0
+          ? "paid"
+          : newPayment > 0
+          ? "partially paid"
+          : lastInvoice.status;
+
       const newInvoice = await fastify.prisma.invoice.create({
         data: {
           restaurantId: Number(currentResId),
           pricingPlanId: lastInvoice.pricingPlanId,
+
           subTotalAmount: lastInvoice.subTotalAmount,
           totalAmount: lastInvoice.totalAmount,
-          partialAmount: partialAmount,
-          remainingAmount: updatedRemainingAmount,
+
+          partialAmount: newPayment,     // ✔ stores only current installment
+          paidAmount: totalPaid,         // ✔ cumulative
+          remainingAmount,               // ✔ correct remaining
+
           dueDate: lastInvoice.dueDate,
           proformaNumber: lastInvoice.proformaNumber,
           invoiceNumber,
           status: updatedStatus,
+
           paymentDate: new Date(paymentDate),
           paymentNotes: paymentNotes || null,
-          isPartialPayment: isPartial === "Yes",
+          isPartialPayment: newPayment > 0,
           paymentFileUrl,
         },
       });

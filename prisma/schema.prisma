@@ -86,6 +86,7 @@ model Invoice {
   totalAmount       Float
   partialAmount     Float?
   remainingAmount   Float?
+  paidAmount        Float?
   dueDate           DateTime
   proformaNumber    String?
   invoiceNumber     String?        @unique
@@ -105,13 +106,29 @@ model PricingPlan {
   planName               String                  @unique
   description            String?
   fixedPrice             Float?
-  basePrice              Float
-  creditsIncluded        Float
-  validity               Float?
+  basePrice              Float?
+  creditsIncluded        Float?
+  billingCycle           Int?
+  validity               Int?
   meteredProducts        MeteredProduct[]
   includedProducts       IncludedProduct[]
   restaurantPricingPlans RestaurantPricingPlan[]
   invoices               Invoice[]
+}
+
+model FixedPlan {
+  id                     Int                     @id @default(autoincrement())
+  createdAt              DateTime                @default(now())
+  price                  Float
+  billingCycle           Int
+}
+
+model MeteredPlan {
+  id                     Int                     @id @default(autoincrement())
+  createdAt              DateTime                @default(now())
+  price                  Float
+  creditsIncluded        Int
+  billingCycle           Int
 }
 
 model Product {
@@ -119,6 +136,7 @@ model Product {
   createdAt DateTime @default(now())
 
   name             String            @unique
+  license          String?
   meteredProducts  MeteredProduct[]
   includedProducts IncludedProduct[]
 }
@@ -149,7 +167,6 @@ model IncludedProduct {
   productId Int
   product   Product @relation(fields: [productId], references: [id])
 
-  credits  Float
   isActive Boolean @default(true)
 
   @@unique([planId, productId])
