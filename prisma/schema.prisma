@@ -139,6 +139,7 @@ model Product {
   license          String?
   meteredProducts  MeteredProduct[]
   includedProducts IncludedProduct[]
+  @@unique([name], map: "product_name_ci_unique")
 }
 
 model MeteredProduct {

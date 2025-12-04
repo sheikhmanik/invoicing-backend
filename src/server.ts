@@ -23,7 +23,7 @@ app.register(businessRoutes, { prefix: "/business" });
 app.register(brandRoutes, { prefix: "/brand" });
 app.register(restaurantRoutes, { prefix: "/restaurant" });
 app.register(dashboardRoutes, { prefix: "/dashboard" });
-app.register(Pricing, { prefix: "pricing-plan" });
+app.register(Pricing, { prefix: "/pricing-plan" });
 app.register(productRoutes, { prefix: "/products" });
 
 const { PrismaClient } = require("@prisma/client");

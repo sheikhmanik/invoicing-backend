@@ -36,7 +36,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post("/plan-map", async (req, reply) => {
+  fastify.post("/assign-plan", async (req, reply) => {
     const {
       restaurantId,
       pricingPlanId,
@@ -92,7 +92,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         },
       });
 
-      const base = Number(planExists.basePrice); // or fixedPrice if hybrid — adjust as needed
+      const base = Number(planExists.planType === "fixed" ? planExists.fixedPrice : planExists.basePrice); // or fixedPrice if hybrid — adjust as needed
 
       // TAX calculations
       const cgstAmount = CGST ? base * 0.09 : 0;
@@ -156,19 +156,24 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       //  CREATE INVOICE ROW
       // -------------------------
 
-      const invoice = {
-        restaurantId: Number(restaurantId),
-        pricingPlanId: Number(pricingPlanId),
-        subTotalAmount: planExists.basePrice,
-        totalAmount,
-        remainingAmount: totalAmount,
-        dueDate,
-        proformaNumber,   // 👈 new
-        invoiceNumber,    // 👈 final invoice number reserved
-        status: "pending" // still pending until payment is updated
-      };
+      const subTotalAmount =
+        planExists.planType === "fixed"
+          ? Number(planExists.fixedPrice)
+          : Number(planExists.basePrice);
 
-      const createdInvoice = await fastify.prisma.invoice.create({ data: invoice });
+      const createdInvoice = await fastify.prisma.invoice.create({
+        data: {
+          subTotalAmount,
+          totalAmount,
+          remainingAmount: totalAmount,
+          dueDate,
+          proformaNumber,
+          invoiceNumber,
+          status: "pending",
+          restaurant: { connect: { id: Number(restaurantId) } },
+          pricingPlan: { connect: { id: Number(pricingPlanId) } },
+        }
+      });
 
       const restaurant = await fastify.prisma.restaurant.findUnique({
         where: { id: Number(restaurantId) },
@@ -180,18 +185,18 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           }
         }
       });
-      const businessEmail = restaurant?.brand?.business?.PrimaryContactEmail;
-      if (businessEmail) {
-        await sendEmail(
-          businessEmail,
-          createdInvoice.invoiceNumber as string,
-          createdInvoice.totalAmount,
-          restaurant,
-          createdInvoice,
-          planExists,
-        );
-        console.log("📧 Email sent to:", businessEmail);
-      }
+      // const businessEmail = restaurant?.brand?.business?.PrimaryContactEmail;
+      // if (businessEmail) {
+      //   await sendEmail(
+      //     businessEmail,
+      //     createdInvoice.invoiceNumber as string,
+      //     createdInvoice.totalAmount,
+      //     restaurant,
+      //     createdInvoice,
+      //     planExists,
+      //   );
+      //   console.log("📧 Email sent to:", businessEmail);
+      // }
 
       return reply.send({
         message: "Plan updated successfully — Email Sent!",
@@ -349,7 +354,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         return reply.code(404).send({ error: "Restaurant not found" });
       }
   
-      const lastInvoice = restaurant.invoices[restaurant.invoices.length - 1];
+      const lastInvoice = restaurant.invoices.at(-1);
   
       if (!lastInvoice) {
         return reply.code(400).send({
@@ -378,7 +383,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       const invoiceNumber = `E/I/${year}/${month}/${String(seq).padStart(4, "0")}`;
 
       const previousPaid = Number(lastInvoice.paidAmount ?? 0);
-      const newPayment = Number(partialAmount ?? 0);
+      const newPayment = isPartial.toLowerCase() === "yes" ? Number(partialAmount ?? 0) : Number(lastInvoice.remainingAmount ?? 0);
       const totalPaid = previousPaid + newPayment;
 
       const remainingAmount = Number(lastInvoice.totalAmount) - totalPaid;

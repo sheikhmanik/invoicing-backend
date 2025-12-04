@@ -75,6 +75,7 @@ CREATE TABLE "Invoice" (
     "totalAmount" DOUBLE PRECISION NOT NULL,
     "partialAmount" DOUBLE PRECISION,
     "remainingAmount" DOUBLE PRECISION,
+    "paidAmount" DOUBLE PRECISION,
     "dueDate" TIMESTAMP(3) NOT NULL,
     "proformaNumber" TEXT,
     "invoiceNumber" TEXT,
@@ -171,6 +172,9 @@ CREATE UNIQUE INDEX "PricingPlan_planName_key" ON "PricingPlan"("planName");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Product_name_key" ON "Product"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "product_name_ci_unique" ON "Product"("name");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "MeteredProduct_planId_productId_key" ON "MeteredProduct"("planId", "productId");

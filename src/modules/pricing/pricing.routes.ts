@@ -2,242 +2,7 @@ import { FastifyInstance } from "fastify";
 
 export default async function PricingPlanRoutes(fastify: FastifyInstance) {
   
-  // fastify.post("/", async (req, reply) => {
-  //   try {
-  //     const data = req.body as any;
-
-  //     const {
-  //       planId,
-  //       planType,
-  //       planName,
-  //       description,
-  //       fixedPrice,
-  //       basePrice,
-  //       creditsIncluded,
-  //       billingCycle,
-  //       validity,
-  //       meteredProducts,
-  //       includedProducts,
-  //     } = data;
-
-  //     const fixedPlanData = {
-  //       planType,
-  //       planName,
-  //       description,
-  //       fixedPrice,
-  //       billingCycle,
-  //       includedProducts,
-  //     };
-  //     const meteredPlanData = {
-  //       planType,
-  //       planName,
-  //       description,
-  //       basePrice,
-  //       creditsIncluded,
-  //       validity,
-  //       meteredProducts,
-  //     };
-  //     const hybridPlanData = {
-  //       planType,
-  //       planName,
-  //       description,
-  //       fixedPrice,
-  //       basePrice,
-  //       creditsIncluded,
-  //       billingCycle,
-  //       validity,
-  //       meteredProducts,
-  //       includedProducts,
-  //     }
-
-  //     // If plan exists then just update
-  //     if (planId) {
-  //       if (planType === "fixed") {
-  //         await fastify.prisma.pricingPlan.update({
-  //           where: { id: Number(planId) },
-  //           data: fixedPlanData,
-  //         })
-  //       }
-  //       if (planType === "metered") {
-  //         await fastify.prisma.pricingPlan.update({
-  //           where: { id: Number(planId) },
-  //           data: meteredPlanData,
-  //         })
-  //       }
-  //       if (planType === "hybrid") {
-  //         await fastify.prisma.pricingPlan.update({
-  //           where: { id: Number(planId) },
-  //           data: hybridPlanData,
-  //         })
-  //       }
-  //     } else {
-  //       if (planType === "fixed") {
-  //         await fastify.prisma.pricingPlan.create({
-  //           data: fixedPlanData,
-  //         })
-  //       }
-  //       if (planType === "metered") {
-  //         await fastify.prisma.pricingPlan.create({
-  //           data: meteredPlanData,
-  //         })
-  //       }
-  //       if (planType === "hybrid") {
-  //         await fastify.prisma.pricingPlan.create({
-  //           data: hybridPlanData,
-  //         })
-  //       }
-  //     }
-
-  //     // const planData = {
-  //     //   planType,
-  //     //   planName,
-  //     //   description,
-  //     //   basePrice,
-  //     //   creditsIncluded,
-  //     //   validity,
-  //     // }
-
-  //     // if (typeof fixedPrice !== undefined) {
-  //     //   planData.fixedPrice = fixedPrice
-  //     // }
-
-  //     // // === If planId provided -> update that plan ===
-  //     // let plan;
-  //     // if (planId) {
-  //     //   plan = await fastify.prisma.pricingPlan.update({
-  //     //     where: { id: Number(planId) },
-  //     //     data: planData
-  //     //   });
-  //     // } else {
-  //     //   // === create new plan ===
-  //     //   plan = await fastify.prisma.pricingPlan.create({
-  //     //     data: planData
-  //     //   });
-  //     // }
-
-  //     // if (Array.isArray(meteredProducts)) {
-  //     //   for (const item of meteredProducts) {
-  //     //     // resolve productId:
-  //     //     let productId = item.productId ?? null;
-
-  //     //     if (!productId && item.name) {
-  //     //       // find product by name (case-insensitive) or create it
-  //     //       const existing = await fastify.prisma.product.findUnique({
-  //     //         where: { name: item.name }
-  //     //       }).catch(() => null);
-
-  //     //       if (existing) productId = existing.id;
-  //     //       else {
-  //     //         const created = await fastify.prisma.product.create({
-  //     //           data: { name: item.name }
-  //     //         });
-  //     //         productId = created.id;
-  //     //       }
-  //     //     }
-
-  //     //     if (!productId) {
-  //     //       // skip invalid item
-  //     //       fastify.log.warn(`Skipping meteredProduct item without productId or name: ${JSON.stringify(item)}`);
-  //     //       continue;
-  //     //     }
-
-  //     //     // Upsert meteredProduct using unique compound key
-  //     //     await fastify.prisma.meteredProduct.upsert({
-  //     //       where: {
-  //     //         planId_productId: {
-  //     //           planId: plan.id,
-  //     //           productId
-  //     //         }
-  //     //       },
-  //     //       update: {
-  //     //         credits: item.credits,
-  //     //         isActive: true
-  //     //       },
-  //     //       create: {
-  //     //         planId: plan.id,
-  //     //         productId,
-  //     //         credits: item.credits
-  //     //       }
-  //     //     });
-  //     //   }
-  //     // }
-      
-  //     // if (includedProducts !== undefined && Array.isArray(includedProducts)) {
-  //     //   for (const item of includedProducts) {
-  //     //     // resolve productId:
-  //     //     let productId = item.productId ?? null;
-
-  //     //     if (!productId && item.name) {
-  //     //       // find product by name (case-insensitive) or create it
-  //     //       const existing = await fastify.prisma.product.findUnique({
-  //     //         where: { name: item.name }
-  //     //       }).catch(() => null);
-
-  //     //       if (existing) productId = existing.id;
-  //     //       else {
-  //     //         const created = await fastify.prisma.product.create({
-  //     //           data: { name: item.name }
-  //     //         });
-  //     //         productId = created.id;
-  //     //       }
-  //     //     }
-
-  //     //     if (!productId) {
-  //     //       // skip invalid item
-  //     //       fastify.log.warn(`Skipping meteredProduct item without productId or name: ${JSON.stringify(item)}`);
-  //     //       continue;
-  //     //     }
-
-  //     //     // Upsert meteredProduct using unique compound key
-  //     //     await fastify.prisma.includedProduct.upsert({
-  //     //       where: {
-  //     //         planId_productId: {
-  //     //           planId: plan.id,
-  //     //           productId
-  //     //         }
-  //     //       },
-  //     //       update: {
-  //     //         credits: item.credits,
-  //     //         isActive: true
-  //     //       },
-  //     //       create: {
-  //     //         planId: plan.id,
-  //     //         productId,
-  //     //         credits: item.credits
-  //     //       }
-  //     //     });
-  //     //   }
-  //     // }
-
-  //     // // Return the full plan including metered usages + product info
-  //     // const saved = await fastify.prisma.pricingPlan.findUnique({
-  //     //   where: { id: plan.id },
-  //     //   include: {
-  //     //     meteredProducts: {
-  //     //       include: { product: true }
-  //     //     },
-  //     //     includedProducts: {
-  //     //       include: { product: true }
-  //     //     }
-  //     //   }
-  //     // });
-
-  //     // return reply.send({ message: "Pricing plan saved", plan: saved });
-    
-  //   } catch (err: any) {
-  //     fastify.log.error(err);
-  //     const backendMessage = err.response?.data?.error;
-  //     if (backendMessage?.includes("exists")) {
-  //       alert("A plan with this name already exists.");
-  //       return;
-  //     }
-  //     return reply.code(500).send({
-  //       error: "Failed to save pricing plan",
-  //       detail: err instanceof Error ? err.message : String(err)
-  //     });
-  //   }
-  // });
-
+  // CREATE or UPDATE pricing plan
   fastify.post("/", async (req, reply) => {
     try {
       const {
@@ -307,6 +72,13 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
         for (const item of includedProducts) {
           const productId = item.productId;
           if (!productId) continue;
+
+          if (item.license !== undefined) {
+            await fastify.prisma.product.update({
+              where: { id: productId },
+              data: { license: item.license }
+            });
+          }
   
           const result = await fastify.prisma.includedProduct.upsert({
             where: {
@@ -330,6 +102,13 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
         for (const item of meteredProducts) {
           const productId = item.productId;
           if (!productId) continue;
+
+          if (item.license !== undefined) {
+            await fastify.prisma.product.update({
+              where: { id: productId },
+              data: { license: item.license }
+            });
+          }
   
           const result = await fastify.prisma.meteredProduct.upsert({
             where: {
@@ -370,6 +149,37 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       fastify.log.error(error);
       return reply.code(500).send({ error: error.message });
+    }
+  });
+
+  // DELETE product from plan (metered or included)
+  fastify.delete("/remove-product/:mappingId", async (req, reply) => {
+    try {
+      const { mappingId } = req.params as any;
+      const { type } = req.query as any;
+  
+      if (!mappingId || !["metered", "included"].includes(type)) {
+        return reply.code(400).send({ error: "Invalid request" });
+      }
+  
+      if (type === "metered") {
+        await fastify.prisma.meteredProduct.delete({
+          where: { id: Number(mappingId) }
+        });
+      } else {
+        await fastify.prisma.includedProduct.delete({
+          where: { id: Number(mappingId) }
+        });
+      }
+  
+      return reply.send({ success: true });
+  
+    } catch (err: any) {
+      fastify.log.error(err);
+      return reply.code(500).send({
+        error: "Failed to remove product from plan",
+        detail: err.message
+      });
     }
   });
   
