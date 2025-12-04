@@ -10,10 +10,6 @@ export default async function ProductRoutes(fastify: FastifyInstance) {
       if (!name || !name.trim()) {
         return reply.code(400).send({ error: "Product name is required" });
       }
-  
-      // const lowerCaseName = name.trim().toLowerCase();
-      // const allProducts = await fastify.prisma.product.findMany({ select: { id: true, name: true } });
-      // const existingProduct = allProducts.find( (p) => p.name.trim().toLowerCase() === lowerCaseName );
 
       const existingProduct = await fastify.prisma.product.findFirst({
         where: {

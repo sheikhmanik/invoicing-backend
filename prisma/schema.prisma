@@ -107,11 +107,13 @@ model PricingPlan {
   description            String?
   fixedPrice             Float?
   basePrice              Float?
+  pricePerCredit         Float?
   creditsIncluded        Float?
   billingCycle           Int?
   validity               Int?
   meteredProducts        MeteredProduct[]
   includedProducts       IncludedProduct[]
+  hybridProducts         HybridProduct[]
   restaurantPricingPlans RestaurantPricingPlan[]
   invoices               Invoice[]
 }
@@ -139,6 +141,7 @@ model Product {
   license          String?
   meteredProducts  MeteredProduct[]
   includedProducts IncludedProduct[]
+  hybridProduct    HybridProduct[]
   @@unique([name], map: "product_name_ci_unique")
 }
 
@@ -170,5 +173,23 @@ model IncludedProduct {
 
   isActive Boolean @default(true)
 
+  @@unique([planId, productId])
+}
+
+model HybridProduct {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  planId Int
+  plan   PricingPlan @relation(fields: [planId], references: [id])
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  unlimitedUsage  Boolean?
+  numberOfUnits   Float?
+  creditsPerUnit  Float?
+
+  isActive Boolean @default(true)
   @@unique([planId, productId])
 }

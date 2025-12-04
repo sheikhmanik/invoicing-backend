@@ -97,6 +97,7 @@ CREATE TABLE "PricingPlan" (
     "description" TEXT,
     "fixedPrice" DOUBLE PRECISION,
     "basePrice" DOUBLE PRECISION,
+    "pricePerCredit" DOUBLE PRECISION,
     "creditsIncluded" DOUBLE PRECISION,
     "billingCycle" INTEGER,
     "validity" INTEGER,
@@ -158,6 +159,20 @@ CREATE TABLE "IncludedProduct" (
     CONSTRAINT "IncludedProduct_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "HybridProduct" (
+    "id" SERIAL NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "planId" INTEGER NOT NULL,
+    "productId" INTEGER NOT NULL,
+    "unlimitedUsage" BOOLEAN,
+    "numberOfUnits" DOUBLE PRECISION,
+    "creditsPerUnit" DOUBLE PRECISION,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "HybridProduct_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -181,6 +196,9 @@ CREATE UNIQUE INDEX "MeteredProduct_planId_productId_key" ON "MeteredProduct"("p
 
 -- CreateIndex
 CREATE UNIQUE INDEX "IncludedProduct_planId_productId_key" ON "IncludedProduct"("planId", "productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "HybridProduct_planId_productId_key" ON "HybridProduct"("planId", "productId");
 
 -- AddForeignKey
 ALTER TABLE "Brand" ADD CONSTRAINT "Brand_businessId_fkey" FOREIGN KEY ("businessId") REFERENCES "Business"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -211,3 +229,9 @@ ALTER TABLE "IncludedProduct" ADD CONSTRAINT "IncludedProduct_planId_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "IncludedProduct" ADD CONSTRAINT "IncludedProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HybridProduct" ADD CONSTRAINT "HybridProduct_planId_fkey" FOREIGN KEY ("planId") REFERENCES "PricingPlan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "HybridProduct" ADD CONSTRAINT "HybridProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
