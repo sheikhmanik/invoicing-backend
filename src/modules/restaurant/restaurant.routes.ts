@@ -454,7 +454,12 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
                 include: {
                   product: true
                 }
-              }
+              },
+              hybridProducts: {
+                include: {
+                  product: true
+                }
+              },
             }
           },
         },
