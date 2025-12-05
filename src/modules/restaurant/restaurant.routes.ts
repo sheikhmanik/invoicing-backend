@@ -53,6 +53,14 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       where: { id: Number(restaurantId) }
     });
     if (!restaurantExists) return reply.send({ message: "Restaurant not found!" });
+    
+    const latestInvoice = await fastify.prisma.invoice.findFirst({
+      where: { restaurantId: Number(restaurantId) },
+      orderBy: { createdAt: "desc" },
+    })
+    if (latestInvoice && (latestInvoice.remainingAmount ?? 0) > 0 && latestInvoice.status !== "paid") {
+      return reply.code(400).send({ message: "Restaurant has a remaining amount. Cannot reassign plan!" });
+    }
 
     const planExists = await fastify.prisma.pricingPlan.findUnique({
       where: { id: Number(pricingPlanId) }
