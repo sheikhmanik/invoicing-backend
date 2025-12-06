@@ -47,6 +47,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       startDate,
       planMode,
       trialDays,
+      newInvoiceCreation,
     } = req.body as any;
 
     const restaurantExists = await fastify.prisma.restaurant.findUnique({
@@ -100,7 +101,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         },
       });
 
-      const base = Number(planExists.planType === "fixed" ? planExists.fixedPrice : planExists.basePrice); // or fixedPrice if hybrid — adjust as needed
+      const base = Number(planExists.planType === "fixed" ? planExists.fixedPrice : planExists.basePrice);
 
       // TAX calculations
       const cgstAmount = CGST ? base * 0.09 : 0;
@@ -115,7 +116,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       dueDate.setDate(dueDate.getDate() + 10);
 
       // -------------------------
-      //  PROFORMA & INVOICE NUMBERS
+      //  PROFORMA NUMBER GENERATION
       // -------------------------
 
       const now = new Date();
@@ -141,27 +142,8 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       const proformaSeqPadded = String(proformaSeq).padStart(4, "0");
       const proformaNumber = `E/PI/${year}/${month}/${proformaSeqPadded}`;
 
-      // 2) Generate Invoice Number: E/I/YY/MM/0001
-      const lastInvoiceForMonth = await fastify.prisma.invoice.findFirst({
-        where: {
-          invoiceNumber: {
-            startsWith: `E/I/${year}/${month}/`,
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      });
-
-      let invoiceSeq = 1;
-      if (lastInvoiceForMonth?.invoiceNumber) {
-        const lastPart = lastInvoiceForMonth.invoiceNumber.split("/").pop() || "0";
-        const parsed = Number(lastPart);
-        invoiceSeq = Number.isFinite(parsed) ? parsed + 1 : 1;
-      }
-      const invoiceSeqPadded = String(invoiceSeq).padStart(4, "0");
-      const invoiceNumber = `E/I/${year}/${month}/${invoiceSeqPadded}`;
-
       // -------------------------
-      //  CREATE INVOICE ROW
+      //  CREATE INVOICE ENTRY (Only Proforma)
       // -------------------------
 
       const subTotalAmount =
@@ -175,8 +157,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           totalAmount,
           remainingAmount: totalAmount,
           dueDate,
-          proformaNumber,
-          invoiceNumber,
+          proformaNumber: newInvoiceCreation === "yes" ? proformaNumber : latestInvoice?.proformaNumber || proformaNumber,
           status: "pending",
           restaurant: { connect: { id: Number(restaurantId) } },
           pricingPlan: { connect: { id: Number(pricingPlanId) } },
