@@ -9,6 +9,7 @@ import restaurantRoutes from "./modules/restaurant/restaurant.routes";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes";
 import Pricing from "./modules/pricing/pricing.routes";
 import productRoutes from "./modules/product/product.routes";
+import Invoices from "./modules/invoices/invoices.routes";
 
 const app = Fastify({ logger: true });
 
@@ -25,6 +26,7 @@ app.register(restaurantRoutes, { prefix: "/restaurant" });
 app.register(dashboardRoutes, { prefix: "/dashboard" });
 app.register(Pricing, { prefix: "/pricing-plan" });
 app.register(productRoutes, { prefix: "/products" });
+app.register(Invoices, { prefix: "/invoices" });
 
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient()
