@@ -41,6 +41,21 @@ export default async function businessRoutes(fastify: FastifyInstance) {
       const businesses = await fastify.prisma.business.findMany({
         where,
         orderBy: { name: "asc" },
+        include: {
+          brands: {
+            include: {
+              restaurants: {
+                include: {
+                  restaurantPricingPlans: {
+                    include: {
+                      pricingPlan: true,
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       });
       return reply.send(businesses);
     } catch (error) {
