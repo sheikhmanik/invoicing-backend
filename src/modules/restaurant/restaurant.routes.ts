@@ -211,6 +211,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       customDuration,
       displayDate,
       subTotal,
+      totalAmount,
     } = req.body as any;
 
     const restaurantExists = await fastify.prisma.restaurant.findUnique({
@@ -240,16 +241,6 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           customDuration,
         },
       });
-
-      const base = Number(subTotal);
-
-      // TAX calculations
-      const cgstAmount = CGST ? base * 0.09 : 0;
-      const sgstAmount = SGST ? base * 0.09 : 0;
-      const igstAmount = IGST ? base * 0.18 : 0;
-
-      // FINAL total
-      const totalAmount = base + cgstAmount + sgstAmount + igstAmount;
 
       // due date = 10 days from startDate
       const dueDate = new Date();
