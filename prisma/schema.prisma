@@ -52,22 +52,23 @@ model Restaurant {
 }
 
 model RestaurantPricingPlan {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  createdAt      DateTime @default(now())
 
-  restaurantId Int
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurantId   Int
+  restaurant     Restaurant @relation(fields: [restaurantId], references: [id])
 
-  pricingPlanId Int
-  pricingPlan   PricingPlan @relation(fields: [pricingPlanId], references: [id])
+  pricingPlanId  Int
+  pricingPlan    PricingPlan @relation(fields: [pricingPlanId], references: [id])
 
-  cgst      Boolean  @default(false)
-  sgst      Boolean  @default(false)
-  igst      Boolean  @default(false)
-  addLut    Boolean  @default(false)
-  startDate DateTime @default(now())
-  planMode  String
-  trialDays Int?
+  cgst           Boolean  @default(false)
+  sgst           Boolean  @default(false)
+  igst           Boolean  @default(false)
+  addLut         Boolean  @default(false)
+  startDate      DateTime @default(now())
+  planMode       String
+  trialDays      Int?
+  customDuration Int?
 
   @@unique([restaurantId, pricingPlanId])
 }
@@ -94,6 +95,8 @@ model Invoice {
   paymentNotes      String?
   isPartialPayment  Boolean        @default(false)
   paymentFileUrl    String?
+  customDuration    Int?
+  displayDate       DateTime?
 
   status            String         @default("pending")
 }

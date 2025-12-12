@@ -199,6 +199,143 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     }
   });
 
+  fastify.post("/create-invoice", async (req, reply) => {
+    const {
+      restaurantId,
+      pricingPlanId,
+      CGST,
+      SGST,
+      IGST,
+      LUT,
+      planMode,
+      customDuration,
+      displayDate,
+      subTotal,
+    } = req.body as any;
+
+    const restaurantExists = await fastify.prisma.restaurant.findUnique({
+      where: { id: Number(restaurantId) }
+    });
+    if (!restaurantExists) return reply.send({ message: "Restaurant not found!" });
+
+    const planExists = await fastify.prisma.pricingPlan.findUnique({
+      where: { id: Number(pricingPlanId) }
+    });
+    if (!planExists) return reply.send({ message: "Plan doesn't exist!" });
+    
+    try {
+      await fastify.prisma.restaurantPricingPlan.deleteMany({
+        where: { restaurantId: Number(restaurantId) },
+      });
+      const saved = await fastify.prisma.restaurantPricingPlan.create({
+        data: {
+          restaurantId: Number(restaurantId),
+          pricingPlanId: Number(pricingPlanId),
+          cgst: Boolean(CGST),
+          sgst: Boolean(SGST),
+          igst: Boolean(IGST),
+          addLut: Boolean(LUT),
+          startDate: new Date(),
+          planMode: planMode,
+          customDuration,
+        },
+      });
+
+      const base = Number(subTotal);
+
+      // TAX calculations
+      const cgstAmount = CGST ? base * 0.09 : 0;
+      const sgstAmount = SGST ? base * 0.09 : 0;
+      const igstAmount = IGST ? base * 0.18 : 0;
+
+      // FINAL total
+      const totalAmount = base + cgstAmount + sgstAmount + igstAmount;
+
+      // due date = 10 days from startDate
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 10);
+
+      // -------------------------
+      //  PROFORMA NUMBER GENERATION
+      // -------------------------
+
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);             // e.g. "25"
+      const month = String(now.getMonth() + 1).padStart(2, "0");       // e.g. "11"
+
+      // 1) Generate Proforma Number: E/PI/YY/MM/0001
+      const lastProforma = await fastify.prisma.invoice.findFirst({
+        where: {
+          proformaNumber: {
+            startsWith: `E/PI/${year}/${month}/`,
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      let proformaSeq = 1;
+      if (lastProforma?.proformaNumber) {
+        const lastPart = lastProforma.proformaNumber.split("/").pop() || "0";
+        const parsed = Number(lastPart);
+        proformaSeq = Number.isFinite(parsed) ? parsed + 1 : 1;
+      }
+      const proformaSeqPadded = String(proformaSeq).padStart(4, "0");
+      const proformaNumber = `E/PI/${year}/${month}/${proformaSeqPadded}`;
+
+      // -------------------------
+      //  CREATE INVOICE ENTRY (Only Proforma)
+      // -------------------------
+
+      const createdInvoice = await fastify.prisma.invoice.create({
+        data: {
+          subTotalAmount: subTotal,
+          totalAmount,
+          remainingAmount: totalAmount,
+          dueDate,
+          proformaNumber,
+          status: "pending",
+          customDuration,
+          displayDate: displayDate ? new Date(displayDate) : null,
+          restaurant: { connect: { id: Number(restaurantId) } },
+          pricingPlan: { connect: { id: Number(pricingPlanId) } },
+        }
+      });
+
+      const restaurant = await fastify.prisma.restaurant.findUnique({
+        where: { id: Number(restaurantId) },
+        include: {
+          brand: { include: { business: true } },
+          invoices: true,
+          restaurantPricingPlans: {
+            include: { pricingPlan: true }
+          }
+        }
+      });
+      // const businessEmail = restaurant?.brand?.business?.PrimaryContactEmail;
+      // if (businessEmail) {
+      //   await sendEmail(
+      //     businessEmail,
+      //     createdInvoice.invoiceNumber as string,
+      //     createdInvoice.totalAmount,
+      //     restaurant,
+      //     createdInvoice,
+      //     planExists,
+      //   );
+      //   console.log("📧 Email sent to:", businessEmail);
+      // }
+
+      return reply.send({
+        message: "Plan updated successfully — Email Sent!",
+        saved,
+        invoice: createdInvoice,
+      });
+
+    } catch (err) {
+      console.error("Error mapping plan:", err);
+      return reply.code(500).send({ error: "Failed to assign plan" });
+    }
+  });
+
   fastify.post("/update-tax-settings", async (req, reply) => {
     const {
       restaurantId,
