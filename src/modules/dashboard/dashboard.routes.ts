@@ -2,14 +2,16 @@ import { FastifyInstance } from "fastify";
 
 export default async function dashboardRoutes(fastify: FastifyInstance) {
   fastify.get("/stats", async () => {
-    const totalCustomers = await fastify.prisma.restaurant.count();
-    const totalOutlets = totalCustomers;
+    const totalBusinesses = await fastify.prisma.business.findMany();
+    const totalRestaurants = await fastify.prisma.restaurant.findMany();
+    const invoices = await fastify.prisma.invoice.findMany();
+    const plans = await fastify.prisma.pricingPlan.findMany();
 
     return {
-      totalCustomers,
-      totalOutlets,
-      pendingInvoices: 0,
-      paidInvoices: 0,
+      totalBusinesses,
+      totalRestaurants,
+      plans,
+      invoices,
       mrr: 0,
       arr: 0,
       newCustomers: 0,
