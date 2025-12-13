@@ -72,6 +72,8 @@ model RestaurantPricingPlan {
   planMode       String
   trialDays      Int?
   customDuration Int?
+
+  @@unique([restaurantId, pricingPlanId])
 }
 
 model Invoice {

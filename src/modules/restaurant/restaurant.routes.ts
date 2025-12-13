@@ -69,9 +69,9 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     if (!planExists) return reply.send({ message: "Plan doesn't exist!" });
     
     try {
-      await fastify.prisma.restaurantPricingPlan.deleteMany({
-        where: { restaurantId: Number(restaurantId) },
-      });
+      // await fastify.prisma.restaurantPricingPlan.deleteMany({
+      //   where: { restaurantId: Number(restaurantId) },
+      // });
       const saved = await fastify.prisma.restaurantPricingPlan.upsert({
         where: {
           restaurantId_pricingPlanId: {
@@ -226,9 +226,9 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     if (!planExists) return reply.send({ message: "Plan doesn't exist!" });
     
     try {
-      // await fastify.prisma.restaurantPricingPlan.deleteMany({
-      //   where: { restaurantId: Number(restaurantId) },
-      // });
+      await fastify.prisma.restaurantPricingPlan.deleteMany({
+        where: { restaurantId: Number(restaurantId) },
+      });
       const saved = await fastify.prisma.restaurantPricingPlan.create({
         data: {
           restaurantId: Number(restaurantId),
@@ -457,6 +457,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       isPartial,
       partialAmount,
       paymentFileUrl,
+      proformaNumber,
     } = req.body as any;
   
     if (!currentResId || !paymentDate) {
@@ -472,8 +473,14 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       if (!restaurant) {
         return reply.code(404).send({ error: "Restaurant not found" });
       }
-  
-      const lastInvoice = restaurant.invoices.at(-1);
+
+      const invoices = await fastify.prisma.invoice.findMany({
+        where: { proformaNumber }
+      });
+      
+      const lastInvoice = invoices.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0];
   
       if (!lastInvoice) {
         return reply.code(400).send({
@@ -606,6 +613,14 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
 
     return reply.send(mapping);
   });
+
+  fastify.get("/restaurantPricingPlans", async () => {
+    return fastify.prisma.restaurantPricingPlan.findMany({
+      include: {
+        pricingPlan: true
+      }
+    })
+  })
 
   fastify.get("/", async () => {
     return fastify.prisma.restaurant.findMany({
