@@ -212,6 +212,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
       displayDate,
       subTotal,
       totalAmount,
+      discountAmount,
     } = req.body as any;
 
     const restaurantExists = await fastify.prisma.restaurant.findUnique({
@@ -225,9 +226,9 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
     if (!planExists) return reply.send({ message: "Plan doesn't exist!" });
     
     try {
-      await fastify.prisma.restaurantPricingPlan.deleteMany({
-        where: { restaurantId: Number(restaurantId) },
-      });
+      // await fastify.prisma.restaurantPricingPlan.deleteMany({
+      //   where: { restaurantId: Number(restaurantId) },
+      // });
       const saved = await fastify.prisma.restaurantPricingPlan.create({
         data: {
           restaurantId: Number(restaurantId),
@@ -289,6 +290,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
           displayDate: displayDate ? new Date(displayDate) : null,
           restaurant: { connect: { id: Number(restaurantId) } },
           pricingPlan: { connect: { id: Number(pricingPlanId) } },
+          discountAmount: discountAmount || 0,
         }
       });
 

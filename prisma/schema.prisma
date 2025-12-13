@@ -9,15 +9,16 @@ datasource db {
 
 model User {
   id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
   name      String
   email     String   @unique
   password  String
   role      String   @default("staff")
-  createdAt DateTime @default(now())
 }
 
 model Business {
-  id                  Int     @id @default(autoincrement())
+  id                  Int      @id @default(autoincrement())
+  createdAt           DateTime @default(now())
   name                String
   address             String
   location            String
@@ -30,6 +31,7 @@ model Business {
 
 model Brand {
   id          Int          @id @default(autoincrement())
+  createdAt   DateTime     @default(now())
   name        String
   businessId  Int
   business    Business     @relation(fields: [businessId], references: [id])
@@ -38,6 +40,7 @@ model Brand {
 
 model Restaurant {
   id                     Int                     @id @default(autoincrement())
+  createdAt              DateTime                @default(now())
   name                   String
   address                String
   location               String
@@ -69,8 +72,6 @@ model RestaurantPricingPlan {
   planMode       String
   trialDays      Int?
   customDuration Int?
-
-  @@unique([restaurantId, pricingPlanId])
 }
 
 model Invoice {
@@ -97,6 +98,7 @@ model Invoice {
   paymentFileUrl    String?
   customDuration    Int?
   displayDate       DateTime?
+  discountAmount    Float?
 
   status            String         @default("pending")
 }
