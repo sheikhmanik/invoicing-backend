@@ -44,8 +44,11 @@ app.get("/", async () => {
 const start = async () => {
   try {
     const port = Number(process.env.PORT) || 4000;
-    await app.listen({ port });
-    console.log("🚀 Server is running on http://localhost:4000");
+    await app.listen({
+      port,
+      host: "0.0.0.0"
+    });
+    console.log(`🚀 Server is running on ${port}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);
