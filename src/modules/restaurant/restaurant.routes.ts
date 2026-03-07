@@ -1,5 +1,4 @@
 import { FastifyInstance } from "fastify";
-import { sendEmail } from "../../utils/mailer";
 
 export default async function restaurantRoutes(fastify: FastifyInstance) {
   
