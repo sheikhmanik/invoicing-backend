@@ -43,7 +43,8 @@ app.get("/", async () => {
 // Start server
 const start = async () => {
   try {
-    await app.listen({ port: 4000 });
+    const port = Number(process.env.PORT) || 4000;
+    await app.listen({ port });
     console.log("🚀 Server is running on http://localhost:4000");
   } catch (err) {
     app.log.error(err);
