@@ -35,44 +35,44 @@
 // }
 
 
-import nodemailer from "nodemailer";
-import * as pdf from "html-pdf-node";
-import { generateFullInvoiceHTML } from "../templates/invoiceTemplate"; // <-- new template file
+// import nodemailer from "nodemailer";
+// import * as pdf from "html-pdf-node";
+// import { generateFullInvoiceHTML } from "../templates/invoiceTemplate"; // <-- new template file
 
-export const mailer = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// export const mailer = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// });
 
-export async function sendEmail(
-  to: string,
-  invoiceNumber: string,
-  totalAmount: number,
-  restaurant: any,
-  createdInvoice: any,
-  pricingPlan: any
-) {
-  // Generate full HTML from template function
-  const html = generateFullInvoiceHTML(restaurant, createdInvoice, pricingPlan);
+// export async function sendEmail(
+//   to: string,
+//   invoiceNumber: string,
+//   totalAmount: number,
+//   restaurant: any,
+//   createdInvoice: any,
+//   pricingPlan: any
+// ) {
+//   // Generate full HTML from template function
+//   const html = generateFullInvoiceHTML(restaurant, createdInvoice, pricingPlan);
 
-  // Convert HTML to PDF
-  const pdfBuffer = await pdf.generatePdf({ content: html }, { format: "A4" });
+//   // Convert HTML to PDF
+//   const pdfBuffer = await pdf.generatePdf({ content: html }, { format: "A4" });
 
-  const mailOptions = {
-    from: `"Fuvii Billing" <${process.env.EMAIL_USER}>`,
-    to,
-    subject: `Invoice — ${invoiceNumber}`,
-    html, // full invoice HTML goes inside email body 👌
-    attachments: [
-      {
-        filename: `Invoice-${invoiceNumber}.pdf`,
-        content: pdfBuffer,
-      }
-    ]
-  };
+//   const mailOptions = {
+//     from: `"Fuvii Billing" <${process.env.EMAIL_USER}>`,
+//     to,
+//     subject: `Invoice — ${invoiceNumber}`,
+//     html, // full invoice HTML goes inside email body 👌
+//     attachments: [
+//       {
+//         filename: `Invoice-${invoiceNumber}.pdf`,
+//         content: pdfBuffer,
+//       }
+//     ]
+//   };
 
-  return mailer.sendMail(mailOptions);
-}
+//   return mailer.sendMail(mailOptions);
+// }
