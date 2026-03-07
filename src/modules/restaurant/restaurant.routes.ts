@@ -408,6 +408,12 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         orderBy: { createdAt: "desc" },
       });
 
+      if (!lastInvoice) {
+        return reply.code(400).send({
+          error: "Restaurant has no invoice. Assign a plan first."
+        });
+      }
+
       // Calculate old paid amount correctly
       const previousPaid = Number(lastInvoice.paidAmount ?? 0);
 
@@ -426,7 +432,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
         restaurantId: Number(restaurantId),
         pricingPlanId: Number(pricingPlanId),
 
-        subTotalAmount: planExists.basePrice, // or previous
+        subTotalAmount: base, // or previous
         totalAmount,      // NEW total after tax update
 
         paidAmount: previousPaid,    // Keep cumulative payments
@@ -597,7 +603,7 @@ export default async function restaurantRoutes(fastify: FastifyInstance) {
 
       return reply.send(mapping);
     } catch (err) {
-      fastify.log.error("Error fetching specific plan mapping:", err);
+      fastify.log.error("Error fetching specific plan mapping:", err as any);
       return reply.code(500).send({ error: "Failed to fetch specific plan mapping" });
     }
   });

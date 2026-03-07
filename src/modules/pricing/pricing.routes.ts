@@ -218,15 +218,13 @@ export default async function PricingPlanRoutes(fastify: FastifyInstance) {
         }
       });
 
-      const test = await fastify.prisma.pricingPlan.findUnique({
+      await fastify.prisma.pricingPlan.findUnique({
         where: { id: plan.id },
         include: {
           hybridProducts: true
         }
       });
       
-      console.log("💥 Hybrid products returned:", test.hybridProducts);
-  
       return reply.send({
         message: "Pricing Plan Saved!",
         plan: saved,
